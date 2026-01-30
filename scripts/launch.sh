@@ -150,7 +150,9 @@ fi
 
 DIRECTOR_PANE=$(tmux display-message -t "$DIRECTOR_TARGET" -p '#{pane_id}')
 tmux select-pane -t "$DIRECTOR_PANE" -T "director"
-tmux send-keys -t "$DIRECTOR_PANE" "cd '$STUDIO_DIR' && export PS1='(\[\033[1;35m\]監督\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear" Enter
+tmux send-keys -t "$DIRECTOR_PANE" "cd '$STUDIO_DIR' && export PS1='(\[\033[1;35m\]監督\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear"
+sleep 0.3
+tmux send-keys -t "$DIRECTOR_PANE" Enter
 # Director gets dark background
 tmux select-pane -t "$DIRECTOR_PANE" -P 'bg=#002b36' 2>/dev/null || true
 
@@ -198,7 +200,9 @@ read -ra WORKER_COLORS <<< "${WORKER_COLORS[*]}"
 for i in $(seq 0 $((WORKER_COUNT - 1))); do
     pane_id="${SORTED_WORKER_PANES[$i]}"
     tmux select-pane -t "$pane_id" -T "${WORKER_NAMES[$i]}"
-    tmux send-keys -t "$pane_id" "cd '$STUDIO_DIR' && export PS1='(\[\033[${WORKER_COLORS[$i]}m\]${WORKER_LABELS[$i]}\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear" Enter
+    tmux send-keys -t "$pane_id" "cd '$STUDIO_DIR' && export PS1='(\[\033[${WORKER_COLORS[$i]}m\]${WORKER_LABELS[$i]}\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear"
+    sleep 0.3
+    tmux send-keys -t "$pane_id" Enter
 done
 
 log_success "  Workers window created"
@@ -231,17 +235,23 @@ if [ "$SETUP_ONLY" = false ]; then
     log_action "Launching Claude Code in all panes..."
 
     # Director — Opus with extended thinking
-    tmux send-keys -t "$DIRECTOR_PANE" "claude --model opus" Enter
+    tmux send-keys -t "$DIRECTOR_PANE" "claude --model opus"
+    sleep 0.3
+    tmux send-keys -t "$DIRECTOR_PANE" Enter
     log_info "  Director: claude --model opus"
     sleep 1
 
     # Manager — Sonnet (default)
-    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" "claude --model sonnet" Enter
+    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" "claude --model sonnet"
+    sleep 0.3
+    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" Enter
     log_info "  Manager: claude --model sonnet"
 
     # Specialists — Sonnet (default)
     for i in $(seq 0 $((${#ROLES[@]} - 1))); do
-        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" "claude" Enter
+        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" "claude"
+        sleep 0.3
+        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" Enter
         log_info "  ${ROLES[$i]}: claude"
     done
 
@@ -257,18 +267,24 @@ if [ "$SETUP_ONLY" = false ]; then
     log_action "Loading instruction files..."
 
     # Director
-    tmux send-keys -t "$DIRECTOR_PANE" "/read instructions/director.md" Enter
+    tmux send-keys -t "$DIRECTOR_PANE" "/read instructions/director.md"
+    sleep 0.3
+    tmux send-keys -t "$DIRECTOR_PANE" Enter
     log_info "  Director: instructions/director.md"
     sleep 2
 
     # Manager
-    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" "/read instructions/manager.md" Enter
+    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" "/read instructions/manager.md"
+    sleep 0.3
+    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" Enter
     log_info "  Manager: instructions/manager.md"
     sleep 2
 
     # Specialists
     for i in $(seq 0 $((${#ROLES[@]} - 1))); do
-        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" "/read instructions/${ROLES[$i]}.md" Enter
+        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" "/read instructions/${ROLES[$i]}.md"
+        sleep 0.3
+        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" Enter
         log_info "  ${ROLES[$i]}: instructions/${ROLES[$i]}.md"
         sleep 1
     done
