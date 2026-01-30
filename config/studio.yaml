@@ -1,0 +1,48 @@
+studio:
+  name: "AI Game Studio"
+
+  hierarchy:
+    executive_director: "user"  # 総監督
+    director:
+      model: "claude-opus"
+      extended_thinking: true
+    manager:
+      model: "claude-sonnet"
+      extended_thinking: false
+      forbidden_rules:
+        - F001: "Can ONLY write to dashboard.md and queue/ files"
+        - F002: "Must re-read role file after context compression"
+        - F003: "Cannot override Director's creative decisions"
+
+  models:
+    director: "claude-opus"
+    manager: "claude-sonnet"
+    specialists: "claude-sonnet"
+    lightweight: "claude-haiku"
+
+  vision:
+    primary:
+      tool: "agentic-image-analysis"
+      type: "claude-skill"
+      approval_required: false
+    escalation:
+      tool: "gemini-3-pro"
+      command: "gemini -m gemini-3-pro"
+      approval_required: true
+      auto_approve_when:
+        - "confidence < 0.7"
+        - "reviewers disagree"
+        - "director requests"
+      used_by_roles:
+        - art_director
+        - animation_director
+        - ui_designer
+        - vfx_artist
+
+  paths:
+    context: "./context"
+    assets: "./assets"
+    builds: "./builds"
+    queue: "./queue"
+    dashboard: "./dashboard.md"
+    instructions: "./instructions"
