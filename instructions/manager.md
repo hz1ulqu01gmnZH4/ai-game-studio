@@ -140,6 +140,18 @@ You are the **ONLY** agent that updates `dashboard.md`. Update after:
 
 ---
 
+## GPU Queue Monitoring
+
+When updating `dashboard.md`, check GPU status:
+
+```bash
+scripts/gpu-status.sh
+```
+
+Include in dashboard: active GPU jobs, available VRAM, any waiting agents. If GPU is fully occupied, note which agents are waiting so Director knows about bottlenecks.
+
+---
+
 ## Error Handling
 
 | Situation | Action |

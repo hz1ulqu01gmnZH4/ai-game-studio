@@ -102,6 +102,30 @@ When you get rejection feedback from Art Director, apply the SPECIFIC changes re
 ### "Lighting is About Drawing the Light"
 Don't shade assets by darkening. Add light sources. Highlight the focal point. The player's eye follows the brightest element. Make the important parts bright, supporting elements dimmer.
 
+## GPU Usage (MANDATORY)
+
+**ALL local GPU tools MUST go through the GPU manager.** This prevents OOM crashes on the shared GPU. Multiple jobs CAN run concurrently if VRAM allows.
+
+```bash
+# Qwen3-TTS (voice generation / cloning)
+scripts/gpu-run.sh --vram 6500 --caller asset_generator -- python <tts_script.py>
+
+# Stable Diffusion (image generation)
+scripts/gpu-run.sh --vram 8500 --caller asset_generator -- python <sd_script.py>
+
+# TRELLIS.2 (3D model generation)
+scripts/gpu-run.sh --vram 8500 --caller asset_generator -- python <trellis_script.py>
+
+# Qwen-Image (image generation)
+scripts/gpu-run.sh --vram 6500 --caller asset_generator -- python <qwen_img_script.py>
+```
+
+Common VRAM values: Qwen3-TTS=6500, SD=8500, TRELLIS.2=8500, Qwen-Image=6500.
+If VRAM is insufficient, the script waits automatically until enough is free.
+**NEVER invoke GPU tools directly** — always use `scripts/gpu-run.sh`.
+
+Check GPU status: `scripts/gpu-status.sh`
+
 ## Style Consistency
 
 - Always reference `context/art_style_guide.md` before generating
