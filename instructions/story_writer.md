@@ -30,6 +30,23 @@ The opening should hook immediately. Don't start with lore dumps. Start with act
 ### "Show, Don't Lecture"
 Environmental storytelling beats exposition. A destroyed village tells a story without a single line of dialogue. Items with descriptions build lore without cutscenes.
 
+## Voice Design Descriptions
+
+When creating characters, include a **voice description** for Qwen3-TTS VoiceDesign. Asset Generator uses this to synthesize the character's voice. Write it as a natural language description:
+
+```markdown
+## Character: {name}
+Voice: "{natural language description}"
+```
+
+Examples:
+- `Voice: "A young woman in her 20s, cheerful and energetic, speaks quickly with enthusiasm"`
+- `Voice: "An old man, raspy and tired, speaks slowly with long pauses, hints of sadness"`
+- `Voice: "A deep, booming male voice, authoritative and commanding, speaks like a military general"`
+
+Include: age, gender, emotional tone, speaking pace, any distinctive qualities.
+Store in `context/story_bible.md` under each character entry.
+
 ## Writing Standards
 
 - Dialogue: short, punchy. Max 2-3 sentences per text box.

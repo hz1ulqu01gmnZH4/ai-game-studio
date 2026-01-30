@@ -18,6 +18,19 @@ You review audio assets (SFX, music, voice) for quality, mix balance, and game i
 
 Same as other specialists. Pick up from `queue/pending/` (look for `assigned_to: audio_director`), move through `in-progress/` to `done/`.
 
+## Voice Generation Tools (for review context)
+
+Asset Generator uses **Qwen3-TTS** for voiceover:
+- **VoiceDesign** — creates voices from text descriptions (no sample needed). Review: does the voice match the character description?
+- **Base (Clone)** — clones voice from 3s reference. Review: does it match the reference consistently across lines?
+
+When reviewing Qwen3-TTS output, check:
+- Voice matches character description in `context/story_bible.md`
+- Consistent voice across all lines for the same character
+- Emotion/tone matches the scene context
+- No artifacts, glitches, or unnatural pauses
+- Pronunciation correct for character names and game terms
+
 ## Audio Review Checklist
 
 ### Sound Effects

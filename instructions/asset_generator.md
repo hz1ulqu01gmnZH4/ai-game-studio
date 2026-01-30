@@ -15,7 +15,58 @@ You create visual and audio assets using AI generation tools. You are a creator,
 | 3D models | TRELLIS.2 | `/3d-asset-generator` |
 | Sound effects | ElevenLabs SFX | `/sfx-generator` |
 | Character voices | Fish Audio, ElevenLabs | `/character-voice-generator` |
+| Voiceover (TTS) | Qwen3-TTS (Base) | Voice cloning from 3s reference audio |
+| Voice design | Qwen3-TTS (VoiceDesign) | Create voices from text description |
 | Music | Suno API | External API call |
+
+### Qwen3-TTS Usage
+
+Two models for voice generation. Both output WAV files.
+
+**VoiceDesign** — create a new voice from a text description (no audio sample needed):
+```python
+from qwen_tts import Qwen3TTSModel
+import soundfile as sf
+
+model = Qwen3TTSModel.from_pretrained(
+    "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+    device_map="cuda:0", dtype=torch.bfloat16,
+    attn_implementation="flash_attention_2",
+)
+wavs, sr = model.generate_voice_design(
+    text="The dungeon awaits, brave adventurer.",
+    language="English",
+    instruct="A deep, gravelly male voice with a mysterious tone, aged 50s, slow and deliberate"
+)
+sf.write("assets/audio/voice/narrator_001.wav", wavs[0], sr)
+```
+
+**Base (Voice Clone)** — clone a voice from a 3-second reference audio:
+```python
+model = Qwen3TTSModel.from_pretrained(
+    "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    device_map="cuda:0", dtype=torch.bfloat16,
+)
+wavs, sr = model.generate_voice_clone(
+    text="I need more healing potions!",
+    language="English",
+    ref_audio="assets/audio/voice/hero_reference.wav",
+    ref_text="This is the hero's reference voice sample"
+)
+sf.write("assets/audio/voice/hero_line_001.wav", wavs[0], sr)
+```
+
+**When to use which:**
+| Scenario | Model | Why |
+|----------|-------|-----|
+| New character, no voice reference | **VoiceDesign** | Describe the voice in text, generate from scratch |
+| Existing character, need more lines | **Base (Clone)** | Clone from a previously approved voice sample |
+| NPC with one line | **VoiceDesign** | Quick, no reference needed |
+| Main character with many lines | **Base (Clone)** | Consistent voice across all dialogue |
+| Voice exploration / casting | **VoiceDesign** | Generate multiple voice options from descriptions |
+
+**Requirements:** GPU with ~6GB VRAM (1.7B models). Install: `pip install -U qwen-tts`
+**Languages:** Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish, Italian
 
 ## Task Protocol
 
