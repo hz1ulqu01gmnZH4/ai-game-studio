@@ -1,0 +1,4 @@
+# Runtime progression / session state
+queue/
+dashboard.md
+scholar_cache.sqlite
