@@ -9,7 +9,9 @@
 #   ./scripts/launch.sh -a                     # All specialist roles
 #   ./scripts/launch.sh -h                     # Help
 #
-# If no roles specified, launches Director + Manager only (minimal setup).
+# Panes are ALWAYS created for all specialists (manager + 9 roles).
+# The [roles...] argument controls which panes get Claude launched.
+# If no roles specified, launches Director + Manager only.
 # When run inside tmux, creates windows in the current session.
 # When run outside tmux, creates a new "gamestudio" session.
 
@@ -40,8 +42,11 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  -s, --setup-only  Create tmux layout only (no Claude launch)"
-            echo "  -a, --all         Launch all specialist roles"
+            echo "  -a, --all         Launch Claude in all specialist panes"
             echo "  -h, --help        Show this help"
+            echo ""
+            echo "Panes are always created for all specialists."
+            echo "Roles control which panes get Claude launched."
             echo ""
             echo "Examples:"
             echo "  ./scripts/launch.sh                                  # Director + Manager only"
@@ -53,6 +58,7 @@ while [[ $# -gt 0 ]]; do
                 name=$(basename "$f" .md)
                 [ "$name" = "director" ] && continue
                 [ "$name" = "manager" ] && continue
+                [[ "$name" == _* ]] && continue
                 echo "  - $name"
             done
             echo ""
@@ -79,22 +85,26 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Remaining args are role names
-ROLES=("$@")
+# Remaining args are role names to launch Claude in
+LAUNCH_ROLES=("$@")
 
-# If --all, collect all specialist roles
+# Collect ALL specialist roles (panes are always created for all)
+ALL_SPECIALIST_ROLES=()
+for f in "$STUDIO_DIR"/instructions/*.md; do
+    name=$(basename "$f" .md)
+    [ "$name" = "director" ] && continue
+    [ "$name" = "manager" ] && continue
+    [[ "$name" == _* ]] && continue
+    ALL_SPECIALIST_ROLES+=("$name")
+done
+
+# If --all, launch Claude in every specialist pane
 if [ "$ALL_ROLES" = true ]; then
-    ROLES=()
-    for f in "$STUDIO_DIR"/instructions/*.md; do
-        name=$(basename "$f" .md)
-        [ "$name" = "director" ] && continue
-        [ "$name" = "manager" ] && continue
-        ROLES+=("$name")
-    done
+    LAUNCH_ROLES=("${ALL_SPECIALIST_ROLES[@]}")
 fi
 
-# Validate role instruction files exist
-for role in "${ROLES[@]}"; do
+# Validate launch role instruction files exist
+for role in "${LAUNCH_ROLES[@]}"; do
     if [ ! -f "$STUDIO_DIR/instructions/${role}.md" ]; then
         echo "ERROR: No instruction file for role '$role' at instructions/${role}.md" >&2
         exit 1
@@ -105,6 +115,15 @@ done
 log_info()    { echo -e "\033[1;33m[info]\033[0m $1"; }
 log_success() { echo -e "\033[1;32m[done]\033[0m $1"; }
 log_action()  { echo -e "\033[1;31m[act]\033[0m  $1"; }
+
+# Helper: check if a role is in LAUNCH_ROLES
+is_launch_role() {
+    local needle="$1"
+    for r in "${LAUNCH_ROLES[@]}"; do
+        [ "$r" = "$needle" ] && return 0
+    done
+    return 1
+}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 1: Detect tmux context
@@ -159,11 +178,12 @@ tmux select-pane -t "$DIRECTOR_PANE" -P 'bg=#002b36' 2>/dev/null || true
 log_success "  Director window created"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 4: Create Workers window (Manager + specialists in panes)
+# STEP 4: Create Workers window (Manager + ALL specialists — always all panes)
 # ═══════════════════════════════════════════════════════════════════════════════
-# Worker count: 1 (Manager) + N (specialists)
-WORKER_COUNT=$((1 + ${#ROLES[@]}))
-log_action "Creating Workers window ($WORKER_COUNT panes: Manager + ${#ROLES[@]} specialists)..."
+# Worker list: manager + all specialists (always)
+WORKER_NAMES=("manager" "${ALL_SPECIALIST_ROLES[@]}")
+WORKER_COUNT=${#WORKER_NAMES[@]}
+log_action "Creating Workers window ($WORKER_COUNT panes: Manager + ${#ALL_SPECIALIST_ROLES[@]} specialists)..."
 
 if [ "$IN_TMUX" = true ]; then
     tmux new-window -n "workers" -c "$STUDIO_DIR"
@@ -173,34 +193,47 @@ else
     WORKERS_TARGET="${SESSION_NAME}:workers"
 fi
 
-# First pane is Manager (already exists from new-window)
-WORKER_PANE_IDS=()
-WORKER_PANE_IDS+=($(tmux display-message -t "$WORKERS_TARGET" -p '#{pane_id}'))
+# 3-column grid layout (from multi-agent-shogun/shutsujin_departure.sh)
+PANE_IDS=()
+PANE_IDS+=($(tmux display-message -t "$WORKERS_TARGET" -p '#{pane_id}'))
 
-# Create additional panes for specialists
-for role in "${ROLES[@]}"; do
-    WORKER_PANE_IDS+=($(tmux split-window -t "$WORKERS_TARGET" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
-done
+# Create 3 columns
+PANE_IDS+=($(tmux split-window -h -t "$WORKERS_TARGET" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
+PANE_IDS+=($(tmux split-window -h -t "$WORKERS_TARGET" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
+
+# Subdivide columns into rows
+# Column 1 (PANE_IDS[0]): 4 rows → manager + 3 specialists
+PANE_IDS+=($(tmux split-window -v -t "${PANE_IDS[0]}" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
+PANE_IDS+=($(tmux split-window -v -t "${PANE_IDS[0]}" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
+PANE_IDS+=($(tmux split-window -v -t "${PANE_IDS[0]}" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
+
+# Column 2 (PANE_IDS[1]): 3 rows → 3 specialists
+PANE_IDS+=($(tmux split-window -v -t "${PANE_IDS[1]}" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
+PANE_IDS+=($(tmux split-window -v -t "${PANE_IDS[1]}" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
+
+# Column 3 (PANE_IDS[2]): 3 rows → 3 specialists
+PANE_IDS+=($(tmux split-window -v -t "${PANE_IDS[2]}" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
+PANE_IDS+=($(tmux split-window -v -t "${PANE_IDS[2]}" -c "$STUDIO_DIR" -P -F '#{pane_id}'))
 
 # Apply tiled layout for even distribution
-if [ "$WORKER_COUNT" -gt 1 ]; then
-    tmux select-layout -t "$WORKERS_TARGET" tiled
-fi
+tmux select-layout -t "$WORKERS_TARGET" tiled
 
 # Get sorted pane IDs (tmux display order)
 readarray -t SORTED_WORKER_PANES < <(tmux list-panes -t "$WORKERS_TARGET" -F '#{pane_id}')
 
 # Set pane titles and color-coded prompts
 # Pane 0: Manager (red), Panes 1+: specialists (blue)
-WORKER_NAMES=("manager" "${ROLES[@]}")
-WORKER_LABELS=("マネージャー" "${ROLES[@]}")
-WORKER_COLORS=("1;31" $(printf '1;34 %.0s' $(seq 1 ${#ROLES[@]})))
+WORKER_LABELS=("マネージャー" "${ALL_SPECIALIST_ROLES[@]}")
+WORKER_COLORS=("1;31" $(printf '1;34 %.0s' $(seq 1 ${#ALL_SPECIALIST_ROLES[@]})))
 read -ra WORKER_COLORS <<< "${WORKER_COLORS[*]}"
 
 for i in $(seq 0 $((WORKER_COUNT - 1))); do
-    pane_id="${SORTED_WORKER_PANES[$i]}"
-    tmux select-pane -t "$pane_id" -T "${WORKER_NAMES[$i]}"
-    tmux send-keys -t "$pane_id" "cd '$STUDIO_DIR' && export PS1='(\[\033[${WORKER_COLORS[$i]}m\]${WORKER_LABELS[$i]}\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear"
+    pane_id="${SORTED_WORKER_PANES[@]:$i:1}"
+    label="${WORKER_LABELS[@]:$i:1}"
+    color="${WORKER_COLORS[@]:$i:1}"
+    name="${WORKER_NAMES[@]:$i:1}"
+    tmux select-pane -t "$pane_id" -T "$name"
+    tmux send-keys -t "$pane_id" "cd '$STUDIO_DIR' && export PS1='(\[\033[${color}m\]${label}\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear"
     sleep 0.3
     tmux send-keys -t "$pane_id" Enter
 done
@@ -220,9 +253,8 @@ mkdir -p "$STUDIO_DIR/config"
     echo "# Use these IDs for tmux send-keys commands"
     echo ""
     echo "director: \"$DIRECTOR_PANE\""
-    echo "manager: \"${SORTED_WORKER_PANES[0]}\""
-    for i in $(seq 0 $((${#ROLES[@]} - 1))); do
-        echo "${ROLES[$i]}: \"${SORTED_WORKER_PANES[$((i + 1))]}\""
+    for i in $(seq 0 $((WORKER_COUNT - 1))); do
+        echo "${WORKER_NAMES[@]:$i:1}: \"${SORTED_WORKER_PANES[@]:$i:1}\""
     done
 } > "$STUDIO_DIR/config/pane_targets.yaml"
 
@@ -232,64 +264,44 @@ log_success "  Pane mapping saved"
 # STEP 6: Launch Claude Code in each pane (unless --setup-only)
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
-    log_action "Launching Claude Code in all panes..."
+    log_action "Launching Claude Code..."
 
-    # Director — Opus with extended thinking
-    tmux send-keys -t "$DIRECTOR_PANE" "claude --model opus"
+    # Role instructions are injected via --append-system-prompt so they
+    # persist through context compression (unlike user messages which get lost).
+
+    # Director — Opus with extended thinking + system prompt role
+    DIRECTOR_PROMPT="$STUDIO_DIR/instructions/director.md"
+    tmux send-keys -t "$DIRECTOR_PANE" "claude --dangerously-skip-permissions --model opus --append-system-prompt \"\$(cat '$DIRECTOR_PROMPT')\""
     sleep 0.3
     tmux send-keys -t "$DIRECTOR_PANE" Enter
-    log_info "  Director: claude --model opus"
+    log_info "  Director: opus + instructions/director.md (system prompt)"
     sleep 1
 
-    # Manager — Sonnet (default)
-    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" "claude --model sonnet"
+    # Manager — always launched
+    MANAGER_PROMPT="$STUDIO_DIR/instructions/manager.md"
+    manager_pane="${SORTED_WORKER_PANES[@]:0:1}"
+    tmux send-keys -t "$manager_pane" "claude --dangerously-skip-permissions --model sonnet --append-system-prompt \"\$(cat '$MANAGER_PROMPT')\""
     sleep 0.3
-    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" Enter
-    log_info "  Manager: claude --model sonnet"
+    tmux send-keys -t "$manager_pane" Enter
+    log_info "  Manager: sonnet + instructions/manager.md (system prompt)"
 
-    # Specialists — Sonnet (default)
-    for i in $(seq 0 $((${#ROLES[@]} - 1))); do
-        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" "claude"
-        sleep 0.3
-        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" Enter
-        log_info "  ${ROLES[$i]}: claude"
+    # Specialists — only launch in roles specified by args
+    for i in $(seq 0 $((${#ALL_SPECIALIST_ROLES[@]} - 1))); do
+        role="${ALL_SPECIALIST_ROLES[@]:$i:1}"
+        pane_idx=$((i + 1))
+        if is_launch_role "$role"; then
+            ROLE_PROMPT="$STUDIO_DIR/instructions/${role}.md"
+            spec_pane="${SORTED_WORKER_PANES[@]:$pane_idx:1}"
+            tmux send-keys -t "$spec_pane" "claude --dangerously-skip-permissions --append-system-prompt \"\$(cat '$ROLE_PROMPT')\""
+            sleep 0.3
+            tmux send-keys -t "$spec_pane" Enter
+            log_info "  $role: sonnet + instructions/${role}.md (system prompt)"
+        else
+            log_info "  $role: (pane ready, Claude not launched)"
+        fi
     done
 
-    log_success "  All Claude instances launched"
-    echo ""
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # STEP 6.5: Load instruction files (after Claude is ready)
-    # ═══════════════════════════════════════════════════════════════════════════
-    log_action "Waiting for Claude to initialize..."
-    sleep 15
-
-    log_action "Loading instruction files..."
-
-    # Director
-    tmux send-keys -t "$DIRECTOR_PANE" "/read instructions/director.md"
-    sleep 0.3
-    tmux send-keys -t "$DIRECTOR_PANE" Enter
-    log_info "  Director: instructions/director.md"
-    sleep 2
-
-    # Manager
-    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" "/read instructions/manager.md"
-    sleep 0.3
-    tmux send-keys -t "${SORTED_WORKER_PANES[0]}" Enter
-    log_info "  Manager: instructions/manager.md"
-    sleep 2
-
-    # Specialists
-    for i in $(seq 0 $((${#ROLES[@]} - 1))); do
-        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" "/read instructions/${ROLES[$i]}.md"
-        sleep 0.3
-        tmux send-keys -t "${SORTED_WORKER_PANES[$((i + 1))]}" Enter
-        log_info "  ${ROLES[$i]}: instructions/${ROLES[$i]}.md"
-        sleep 1
-    done
-
-    log_success "  All instruction files loaded"
+    log_success "  Claude instances launched (roles injected as system prompts)"
     echo ""
 fi
 
@@ -314,13 +326,67 @@ echo "  ┌───────────────────────
 echo "  │  監督 (Director)  — creative authority, phase scope  │"
 echo "  └──────────────────────────────────────────────────────┘"
 echo ""
-echo "  [workers] window — マネージャー + specialists"
-echo "  ┌──────────────────────────────────────────────────────┐"
-printf "  │  マネージャー (Manager)  — delegation, no thinking  │\n"
-for role in "${ROLES[@]}"; do
-    printf "  │  %-50s │\n" "$role"
+echo "  [workers] window — マネージャー + specialists (${WORKER_COUNT} panes)"
+echo "  ┌──────────────┬──────────────┬──────────────┐"
+
+# Build 3-column display (4-3-3 grid matching pane layout)
+COL1_SIZE=4
+COL2_SIZE=3
+COL3_SIZE=3
+MAX_ROWS=4
+
+for row in $(seq 0 $((MAX_ROWS - 1))); do
+    # Column 1
+    idx1=$row
+    if [ "$idx1" -lt "$COL1_SIZE" ]; then
+        name1="${WORKER_NAMES[@]:$idx1:1}"
+        if [ "$name1" = "manager" ] || is_launch_role "$name1" 2>/dev/null; then
+            marker1="*"
+        else
+            marker1=" "
+        fi
+        col1=$(printf "%-12s %s" "$name1" "$marker1")
+    else
+        col1=$(printf "%-14s" "")
+    fi
+
+    # Column 2
+    idx2=$((COL1_SIZE + row))
+    if [ "$idx2" -lt "$((COL1_SIZE + COL2_SIZE))" ]; then
+        name2="${WORKER_NAMES[@]:$idx2:1}"
+        if is_launch_role "$name2" 2>/dev/null; then
+            marker2="*"
+        else
+            marker2=" "
+        fi
+        col2=$(printf "%-12s %s" "$name2" "$marker2")
+    else
+        col2=$(printf "%-14s" "")
+    fi
+
+    # Column 3
+    idx3=$((COL1_SIZE + COL2_SIZE + row))
+    if [ "$idx3" -lt "$WORKER_COUNT" ]; then
+        name3="${WORKER_NAMES[@]:$idx3:1}"
+        if is_launch_role "$name3" 2>/dev/null; then
+            marker3="*"
+        else
+            marker3=" "
+        fi
+        col3=$(printf "%-12s %s" "$name3" "$marker3")
+    else
+        col3=$(printf "%-14s" "")
+    fi
+
+    printf "  │ %s│ %s│ %s│\n" "$col1" "$col2" "$col3"
+
+    if [ "$row" -lt "$((MAX_ROWS - 1))" ]; then
+        echo "  ├──────────────┼──────────────┼──────────────┤"
+    fi
 done
-echo "  └──────────────────────────────────────────────────────┘"
+
+echo "  └──────────────┴──────────────┴──────────────┘"
+echo "  (* = Claude launched)"
 echo ""
 
 if [ "$SETUP_ONLY" = true ]; then

@@ -17,7 +17,16 @@ You create narrative content: world building, character backgrounds, dialogue, q
 
 ## Task Protocol
 
-Same as other specialists. Pick up from `queue/pending/` (look for `assigned_to: story_writer`), move through `in-progress/` to `done/`.
+1. **Pick up** your assigned task from `queue/pending/` (look for `assigned_to: story_writer`)
+2. **Move** the task file to `queue/in-progress/`
+3. **Read** the task description, output_path, and any depends_on outputs
+4. **Execute** the task
+5. **Write** output to the specified `output_path`
+6. **Move** the task file to `queue/done/` with completion notes appended
+7. **Notify Manager** — one command:
+   ```bash
+   scripts/notify.sh manager "Task task_XXX completed. Check queue/done/task_XXX.md"
+   ```
 
 ## Sakurai Principles
 

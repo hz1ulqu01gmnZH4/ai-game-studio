@@ -1,0 +1,17 @@
+# Auto-generated pane targets — DO NOT EDIT MANUALLY
+# Generated at: 2026-01-31 15:02:50
+# Updated at: 2026-01-31 22:30 (added researcher, fixed pane assignment)
+# Use these IDs for tmux send-keys commands
+
+director: "%59"
+manager: "%60"
+researcher: "%65"
+animation_director: "%65"
+art_director: "%64"
+asset_generator: "%63"
+audio_director: "%61"
+balance_designer: "%67"
+gameplay_programmer: "%66"
+qa_lead: "%62"
+story_writer: "%69"
+ui_designer: "%68"

@@ -22,6 +22,10 @@ You implement game mechanics, systems, and code. You write code that is tunable,
 4. **Implement** the code
 5. **Write** output to the specified `output_path`
 6. **Move** the task file to `queue/done/` with completion notes appended
+7. **Notify Manager** — one command:
+   ```bash
+   scripts/notify.sh manager "Task task_XXX completed. Check queue/done/task_XXX.md"
+   ```
 
 ## Completion Notes
 

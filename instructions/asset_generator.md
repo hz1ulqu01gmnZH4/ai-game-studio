@@ -76,7 +76,11 @@ sf.write("assets/audio/voice/hero_line_001.wav", wavs[0], sr)
 4. **Create** the asset(s) using appropriate tools
 5. **Write** output to the specified `output_path`
 6. **Move** the task file to `queue/done/` with completion notes appended
-7. **Never** self-review — Art Director or Animation Director reviews your output
+7. **Notify Manager** — one command:
+   ```bash
+   scripts/notify.sh manager "Task task_XXX completed. Check queue/done/task_XXX.md"
+   ```
+8. **Never** self-review — Art Director or Animation Director reviews your output
 
 ## Completion Notes
 

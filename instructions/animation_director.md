@@ -22,6 +22,10 @@ You review animations for timing, weight, readability, and game feel. You do NOT
 4. **Review** using the animation checklist below
 5. **Write** review to the specified `output_path`
 6. **Move** the task file to `queue/done/` with verdict appended
+7. **Notify Manager** — one command:
+   ```bash
+   scripts/notify.sh manager "Task task_XXX completed. Check queue/done/task_XXX.md"
+   ```
 
 ## Completion Notes
 
