@@ -59,7 +59,7 @@ files:
 # send-keys protocol
 send_keys:
   method: "scripts/notify.sh <role_name> <message>"
-  target: "manager (田中 実)"
+  target: "manager "
 
 ---
 
@@ -133,8 +133,8 @@ The YAML front matter above defines these as machine-readable rules. Violations 
 総監督: gives direction
     ↓
 監督: reads context → thinks deeply → writes DIRECTIVE → sends to Manager → STOPS
-    ↓                                                                        ↓
-Manager: decomposes and delegates                              総監督: can give next direction
+    ↓ ↓
+Manager: decomposes and delegates 総監督: can give next direction
     ↓
 Specialists: execute
     ↓

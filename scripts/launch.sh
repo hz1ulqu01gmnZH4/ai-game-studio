@@ -1,14 +1,14 @@
 #!/bin/bash
 # AI Game Studio — Launch Script
 # Deploys Director + Manager + specialist agents in tmux windows.
-#
+
 # Usage:
-#   ./scripts/launch.sh [options] [roles...]
-#   ./scripts/launch.sh asset_generator gameplay_programmer qa_lead
-#   ./scripts/launch.sh -s                     # Setup only (no Claude launch)
-#   ./scripts/launch.sh -a                     # All specialist roles
-#   ./scripts/launch.sh -h                     # Help
-#
+# ./scripts/launch.sh [options] [roles...]
+# ./scripts/launch.sh asset_generator gameplay_programmer qa_lead
+# ./scripts/launch.sh -s # Setup only (no Claude launch)
+# ./scripts/launch.sh -a # All specialist roles
+# ./scripts/launch.sh -h # Help
+
 # Panes are ALWAYS created for all specialists (manager + 9 roles).
 # The [roles...] argument controls which panes get Claude launched.
 # If no roles specified, launches Director + Manager only.
@@ -41,17 +41,17 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: ./scripts/launch.sh [options] [roles...]"
             echo ""
             echo "Options:"
-            echo "  -s, --setup-only  Create tmux layout only (no Claude launch)"
-            echo "  -a, --all         Launch Claude in all specialist panes"
-            echo "  -h, --help        Show this help"
+            echo " -s, --setup-only Create tmux layout only (no Claude launch)"
+            echo " -a, --all Launch Claude in all specialist panes"
+            echo " -h, --help Show this help"
             echo ""
             echo "Panes are always created for all specialists."
             echo "Roles control which panes get Claude launched."
             echo ""
             echo "Examples:"
-            echo "  ./scripts/launch.sh                                  # Director + Manager only"
-            echo "  ./scripts/launch.sh asset_generator qa_lead          # Director + Manager + 2 specialists"
-            echo "  ./scripts/launch.sh -a                               # All roles"
+            echo " ./scripts/launch.sh # Director + Manager only"
+            echo " ./scripts/launch.sh asset_generator qa_lead # Director + Manager + 2 specialists"
+            echo " ./scripts/launch.sh -a # All roles"
             echo ""
             echo "Available specialist roles:"
             for f in "$STUDIO_DIR"/instructions/*.md; do
@@ -59,14 +59,14 @@ while [[ $# -gt 0 ]]; do
                 [ "$name" = "director" ] && continue
                 [ "$name" = "manager" ] && continue
                 [[ "$name" == _* ]] && continue
-                echo "  - $name"
+                echo " - $name"
             done
             echo ""
             echo "Tmux navigation:"
-            echo "  Ctrl-b n / Ctrl-b p    Next/previous window"
-            echo "  Ctrl-b <number>        Jump to window by index"
-            echo "  Ctrl-b w               Window list"
-            echo "  Ctrl-b o               Next pane in current window"
+            echo " Ctrl-b n / Ctrl-b p Next/previous window"
+            echo " Ctrl-b <number> Jump to window by index"
+            echo " Ctrl-b w Window list"
+            echo " Ctrl-b o Next pane in current window"
             echo ""
             exit 0
             ;;
@@ -89,7 +89,7 @@ done
 LAUNCH_ROLES=("$@")
 
 # Collect ALL specialist roles (panes are always created for all)
-ALL_SPECIALIST_ROLES=()
+ALL_SPECIALIST_ROLES=
 for f in "$STUDIO_DIR"/instructions/*.md; do
     name=$(basename "$f" .md)
     [ "$name" = "director" ] && continue
@@ -112,19 +112,19 @@ for role in "${LAUNCH_ROLES[@]}"; do
 done
 
 # --- Color helpers ---
-log_info()    { echo -e "\033[1;33m[info]\033[0m $1"; }
-log_success() { echo -e "\033[1;32m[done]\033[0m $1"; }
-log_action()  { echo -e "\033[1;31m[act]\033[0m  $1"; }
+log_info { echo -e "\033[1;33m[info]\033[0m $1"; }
+log_success { echo -e "\033[1;32m[done]\033[0m $1"; }
+log_action { echo -e "\033[1;31m[act]\033[0m $1"; }
 
 # --- Persona lookup from studio.yaml ---
-# Returns the Japanese display name for a role (e.g., "田中 実" for "manager")
-get_persona_name() {
+# Returns the Japanese display name for a role (e.g., "" for "manager")
+get_persona_name {
     local role="$1"
     local yaml="$STUDIO_DIR/config/studio.yaml"
     # Extract the name field under workers.<role>.name, take just the Japanese part before " ("
     # Two-phase: first enter the workers: section, then find the role and its name field
     local full_name
-    full_name=$(awk '/^  workers:/{w=1} w && /^    '"${role}"':/{found=1} found && /name:/{print; exit}' "$yaml" \
+    full_name=$(awk '/^ workers:/{w=1} w && /^ '"${role}"':/{found=1} found && /name:/{print; exit}' "$yaml" \
         | sed 's/.*name: *"\(.*\)"/\1/' | sed 's/ *(.*//')
     if [ -n "$full_name" ]; then
         echo "$full_name"
@@ -134,7 +134,7 @@ get_persona_name() {
 }
 
 # Helper: check if a role is in LAUNCH_ROLES
-is_launch_role() {
+is_launch_role {
     local needle="$1"
     for r in "${LAUNCH_ROLES[@]}"; do
         [ "$r" = "$needle" ] && return 0
@@ -146,8 +146,8 @@ is_launch_role() {
 # STEP 0: Bootstrap personas into universal-memory (idempotent)
 # ═══════════════════════════════════════════════════════════════════════════════
 log_info "Bootstrapping worker personas into universal-memory..."
-python3 "$STUDIO_DIR/scripts/bootstrap-personas.py" 2>&1 | while IFS= read -r line; do log_info "  $line"; done
-log_success "  Personas ready in memory.db"
+python3 "$STUDIO_DIR/scripts/bootstrap-personas.py" 2>&1 | while IFS= read -r line; do log_info " $line"; done
+log_success " Personas ready in memory.db"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 1: Detect tmux context
@@ -172,10 +172,10 @@ fi
 log_info "Cleaning up previous studio layout..."
 
 if [ "$IN_TMUX" = true ]; then
-    tmux kill-window -t "${CURRENT_SESSION}:director" 2>/dev/null && log_info "  Removed old 'director' window" || true
-    tmux kill-window -t "${CURRENT_SESSION}:workers" 2>/dev/null && log_info "  Removed old 'workers' window" || true
+    tmux kill-window -t "${CURRENT_SESSION}:director" 2>/dev/null && log_info " Removed old 'director' window" || true
+    tmux kill-window -t "${CURRENT_SESSION}:workers" 2>/dev/null && log_info " Removed old 'workers' window" || true
 else
-    tmux kill-session -t "$SESSION_NAME" 2>/dev/null && log_info "  Removed old '$SESSION_NAME' session" || true
+    tmux kill-session -t "$SESSION_NAME" 2>/dev/null && log_info " Removed old '$SESSION_NAME' session" || true
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -200,7 +200,7 @@ tmux send-keys -t "$DIRECTOR_PANE" Enter
 # Director gets dark background
 tmux select-pane -t "$DIRECTOR_PANE" -P 'bg=#002b36' 2>/dev/null || true
 
-log_success "  Director window created"
+log_success " Director window created"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 4: Create Workers window (Manager + ALL specialists — always all panes)
@@ -219,7 +219,7 @@ else
 fi
 
 # 3-column grid layout (from multi-agent-shogun/shutsujin_departure.sh)
-PANE_IDS=()
+PANE_IDS=
 PANE_IDS+=($(tmux display-message -t "$WORKERS_TARGET" -p '#{pane_id}'))
 
 # Create 3 columns
@@ -262,7 +262,7 @@ for i in $(seq 0 $((WORKER_COUNT - 1))); do
     tmux send-keys -t "$pane_id" Enter
 done
 
-log_success "  Workers window created"
+log_success " Workers window created"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -277,14 +277,14 @@ mkdir -p "$STUDIO_DIR/config"
     echo "# Use role names (keys) with scripts/notify.sh for all tmux communication."
     echo "# Example: scripts/notify.sh manager \"Task completed\""
     echo ""
-    echo "director: \"$DIRECTOR_PANE\"  # $(get_persona_name director)"
+    echo "director: \"$DIRECTOR_PANE\" # $(get_persona_name director)"
     for i in $(seq 0 $((WORKER_COUNT - 1))); do
         wname="${WORKER_NAMES[@]:$i:1}"
-        echo "${wname}: \"${SORTED_WORKER_PANES[@]:$i:1}\"  # $(get_persona_name "$wname")"
+        echo "${wname}: \"${SORTED_WORKER_PANES[@]:$i:1}\" # $(get_persona_name "$wname")"
     done
 } > "$STUDIO_DIR/config/pane_targets.yaml"
 
-log_success "  Pane mapping saved"
+log_success " Pane mapping saved"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 6: Launch Claude Code in each pane (unless --setup-only)
@@ -302,7 +302,7 @@ if [ "$SETUP_ONLY" = false ]; then
     tmux send-keys -t "$DIRECTOR_PANE" "claude --dangerously-skip-permissions --model opus --mcp-config '$MCP_CONFIG' --append-system-prompt \"\$(cat '$DIRECTOR_PROMPT')\""
     sleep 0.3
     tmux send-keys -t "$DIRECTOR_PANE" Enter
-    log_info "  Director: opus + instructions/director.md (system prompt)"
+    log_info " Director: opus + instructions/director.md (system prompt)"
     sleep 1
 
     # Manager — always launched
@@ -311,7 +311,7 @@ if [ "$SETUP_ONLY" = false ]; then
     tmux send-keys -t "$manager_pane" "claude --dangerously-skip-permissions --model sonnet --mcp-config '$MCP_CONFIG' --append-system-prompt \"\$(cat '$MANAGER_PROMPT')\""
     sleep 0.3
     tmux send-keys -t "$manager_pane" Enter
-    log_info "  Manager: sonnet + instructions/manager.md (system prompt)"
+    log_info " Manager: sonnet + instructions/manager.md (system prompt)"
 
     # Specialists — only launch in roles specified by args
     for i in $(seq 0 $((${#ALL_SPECIALIST_ROLES[@]} - 1))); do
@@ -323,13 +323,13 @@ if [ "$SETUP_ONLY" = false ]; then
             tmux send-keys -t "$spec_pane" "claude --dangerously-skip-permissions --mcp-config '$MCP_CONFIG' --append-system-prompt \"\$(cat '$ROLE_PROMPT')\""
             sleep 0.3
             tmux send-keys -t "$spec_pane" Enter
-            log_info "  $role: sonnet + instructions/${role}.md (system prompt)"
+            log_info " $role: sonnet + instructions/${role}.md (system prompt)"
         else
-            log_info "  $role: (pane ready, Claude not launched)"
+            log_info " $role: (pane ready, Claude not launched)"
         fi
     done
 
-    log_success "  Claude instances launched (roles injected as system prompts)"
+    log_success " Claude instances launched (roles injected as system prompts)"
     echo ""
 fi
 
@@ -337,25 +337,25 @@ fi
 # STEP 7: Summary
 # ═══════════════════════════════════════════════════════════════════════════════
 echo ""
-echo "  ┌──────────────────────────────────────────────────────┐"
-echo "  │  Layout                                              │"
-echo "  └──────────────────────────────────────────────────────┘"
+echo " ┌──────────────────────────────────────────────────────┐"
+echo " │ Layout │"
+echo " └──────────────────────────────────────────────────────┘"
 echo ""
 
 if [ "$IN_TMUX" = true ]; then
-    echo "  Session: $CURRENT_SESSION (existing)"
+    echo " Session: $CURRENT_SESSION (existing)"
 else
-    echo "  Session: $SESSION_NAME (new)"
+    echo " Session: $SESSION_NAME (new)"
 fi
 
 echo ""
-echo "  [director] window — 監督 (Opus, extended thinking)"
-echo "  ┌──────────────────────────────────────────────────────┐"
-echo "  │  監督 (Director)  — creative authority, phase scope  │"
-echo "  └──────────────────────────────────────────────────────┘"
+echo " [director] window — 監督 (Opus, extended thinking)"
+echo " ┌──────────────────────────────────────────────────────┐"
+echo " │ 監督 (Director) — creative authority, phase scope │"
+echo " └──────────────────────────────────────────────────────┘"
 echo ""
-echo "  [workers] window — マネージャー + specialists (${WORKER_COUNT} panes)"
-echo "  ┌──────────────┬──────────────┬──────────────┐"
+echo " [workers] window — マネージャー + specialists (${WORKER_COUNT} panes)"
+echo " ┌──────────────┬──────────────┬──────────────┐"
 
 # Build 3-column display (4-3-3 grid matching pane layout)
 COL1_SIZE=4
@@ -406,36 +406,36 @@ for row in $(seq 0 $((MAX_ROWS - 1))); do
         col3=$(printf "%-14s" "")
     fi
 
-    printf "  │ %s│ %s│ %s│\n" "$col1" "$col2" "$col3"
+    printf " │ %s│ %s│ %s│\n" "$col1" "$col2" "$col3"
 
     if [ "$row" -lt "$((MAX_ROWS - 1))" ]; then
-        echo "  ├──────────────┼──────────────┼──────────────┤"
+        echo " ├──────────────┼──────────────┼──────────────┤"
     fi
 done
 
-echo "  └──────────────┴──────────────┴──────────────┘"
-echo "  (* = Claude launched)"
+echo " └──────────────┴──────────────┴──────────────┘"
+echo " (* = Claude launched)"
 echo ""
 
 if [ "$SETUP_ONLY" = true ]; then
-    echo "  Setup-only mode: Claude Code not launched."
-    echo "  Launch manually in each pane."
+    echo " Setup-only mode: Claude Code not launched."
+    echo " Launch manually in each pane."
     echo ""
 fi
 
-echo "  Navigation:"
+echo " Navigation:"
 if [ "$IN_TMUX" = true ]; then
-    echo "    Ctrl-b n / Ctrl-b p       Next/previous window"
-    echo "    Ctrl-b <number>           Jump to window by index"
-    echo "    Ctrl-b w                  Window list"
-    echo "    Ctrl-b o                  Next pane (in workers)"
+    echo " Ctrl-b n / Ctrl-b p Next/previous window"
+    echo " Ctrl-b <number> Jump to window by index"
+    echo " Ctrl-b w Window list"
+    echo " Ctrl-b o Next pane (in workers)"
 else
-    echo "    tmux attach -t $SESSION_NAME"
-    echo "    Then: Ctrl-b n/p to switch windows, Ctrl-b o to switch panes"
+    echo " tmux attach -t $SESSION_NAME"
+    echo " Then: Ctrl-b n/p to switch windows, Ctrl-b o to switch panes"
 fi
 echo ""
-echo "  Pane targets: config/pane_targets.yaml"
-echo "  GPU status:   scripts/gpu-status.sh"
+echo " Pane targets: config/pane_targets.yaml"
+echo " GPU status: scripts/gpu-status.sh"
 echo ""
 echo "=== Studio Ready ==="
 echo ""
