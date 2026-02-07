@@ -1,17 +1,21 @@
 # Auto-generated pane targets — DO NOT EDIT MANUALLY
-# Generated at: 2026-01-31 15:02:50
-# Updated at: 2026-01-31 22:30 (added researcher, fixed pane assignment)
-# Use these IDs for tmux send-keys commands
+# Generated at: 2026-02-04 22:29:24
+# Use role names (keys) with scripts/notify.sh for all tmux communication.
+# Example: scripts/notify.sh manager "Task completed"
 
-director: "%59"
-manager: "%60"
-researcher: "%65"
-animation_director: "%65"
-art_director: "%64"
-asset_generator: "%63"
-audio_director: "%61"
-balance_designer: "%67"
-gameplay_programmer: "%66"
-qa_lead: "%62"
-story_writer: "%69"
-ui_designer: "%68"
+director: "%26"  # 黒澤 明彦
+manager: "%27"  # 田中 実
+animation_director: "%32"  # 金田 躍
+art_director: "%31"  # 天野 澄
+asset_generator: "%30"  # 鳥山 彩
+audio_director: "%28"  # 植松 響
+balance_designer: "%34"  # 横尾 均
+debater: "%33"  # 森田 多視
+debater_playfeel: "%29"  # 森田 多視 [手触り]
+gameplay_programmer: "%36"  # 宮本 剛
+qa_lead: "%35"  # 岩田 詩乃
+researcher: "%15"  # 南条 薫
+reviewer: "%17"  # 長谷川 厳
+shared_observation_protocol: ""  # shared_observation_protocol
+story_writer: "%21"  # 野島 詩織
+ui_designer: "%20"  # 高橋 晃

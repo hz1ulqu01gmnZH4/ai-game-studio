@@ -116,6 +116,23 @@ log_info()    { echo -e "\033[1;33m[info]\033[0m $1"; }
 log_success() { echo -e "\033[1;32m[done]\033[0m $1"; }
 log_action()  { echo -e "\033[1;31m[act]\033[0m  $1"; }
 
+# --- Persona lookup from studio.yaml ---
+# Returns the Japanese display name for a role (e.g., "田中 実" for "manager")
+get_persona_name() {
+    local role="$1"
+    local yaml="$STUDIO_DIR/config/studio.yaml"
+    # Extract the name field under workers.<role>.name, take just the Japanese part before " ("
+    # Two-phase: first enter the workers: section, then find the role and its name field
+    local full_name
+    full_name=$(awk '/^  workers:/{w=1} w && /^    '"${role}"':/{found=1} found && /name:/{print; exit}' "$yaml" \
+        | sed 's/.*name: *"\(.*\)"/\1/' | sed 's/ *(.*//')
+    if [ -n "$full_name" ]; then
+        echo "$full_name"
+    else
+        echo "$role"
+    fi
+}
+
 # Helper: check if a role is in LAUNCH_ROLES
 is_launch_role() {
     local needle="$1"
@@ -124,6 +141,13 @@ is_launch_role() {
     done
     return 1
 }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 0: Bootstrap personas into universal-memory (idempotent)
+# ═══════════════════════════════════════════════════════════════════════════════
+log_info "Bootstrapping worker personas into universal-memory..."
+python3 "$STUDIO_DIR/scripts/bootstrap-personas.py" 2>&1 | while IFS= read -r line; do log_info "  $line"; done
+log_success "  Personas ready in memory.db"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 1: Detect tmux context
@@ -168,8 +192,9 @@ else
 fi
 
 DIRECTOR_PANE=$(tmux display-message -t "$DIRECTOR_TARGET" -p '#{pane_id}')
+DIRECTOR_PERSONA=$(get_persona_name "director")
 tmux select-pane -t "$DIRECTOR_PANE" -T "director"
-tmux send-keys -t "$DIRECTOR_PANE" "cd '$STUDIO_DIR' && export PS1='(\[\033[1;35m\]監督\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear"
+tmux send-keys -t "$DIRECTOR_PANE" "cd '$STUDIO_DIR' && export PS1='(\[\033[1;35m\]監督 ${DIRECTOR_PERSONA}\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear"
 sleep 0.3
 tmux send-keys -t "$DIRECTOR_PANE" Enter
 # Director gets dark background
@@ -221,19 +246,18 @@ tmux select-layout -t "$WORKERS_TARGET" tiled
 # Get sorted pane IDs (tmux display order)
 readarray -t SORTED_WORKER_PANES < <(tmux list-panes -t "$WORKERS_TARGET" -F '#{pane_id}')
 
-# Set pane titles and color-coded prompts
+# Set pane titles and color-coded prompts with persona names
 # Pane 0: Manager (red), Panes 1+: specialists (blue)
-WORKER_LABELS=("マネージャー" "${ALL_SPECIALIST_ROLES[@]}")
 WORKER_COLORS=("1;31" $(printf '1;34 %.0s' $(seq 1 ${#ALL_SPECIALIST_ROLES[@]})))
 read -ra WORKER_COLORS <<< "${WORKER_COLORS[*]}"
 
 for i in $(seq 0 $((WORKER_COUNT - 1))); do
     pane_id="${SORTED_WORKER_PANES[@]:$i:1}"
-    label="${WORKER_LABELS[@]:$i:1}"
     color="${WORKER_COLORS[@]:$i:1}"
     name="${WORKER_NAMES[@]:$i:1}"
+    persona=$(get_persona_name "$name")
     tmux select-pane -t "$pane_id" -T "$name"
-    tmux send-keys -t "$pane_id" "cd '$STUDIO_DIR' && export PS1='(\[\033[${color}m\]${label}\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear"
+    tmux send-keys -t "$pane_id" "cd '$STUDIO_DIR' && export PS1='(\[\033[${color}m\]${persona}\[\033[0m\]) \[\033[1;32m\]\w\[\033[0m\]\$ ' && clear"
     sleep 0.3
     tmux send-keys -t "$pane_id" Enter
 done
@@ -250,11 +274,13 @@ mkdir -p "$STUDIO_DIR/config"
 {
     echo "# Auto-generated pane targets — DO NOT EDIT MANUALLY"
     echo "# Generated at: $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "# Use these IDs for tmux send-keys commands"
+    echo "# Use role names (keys) with scripts/notify.sh for all tmux communication."
+    echo "# Example: scripts/notify.sh manager \"Task completed\""
     echo ""
-    echo "director: \"$DIRECTOR_PANE\""
+    echo "director: \"$DIRECTOR_PANE\"  # $(get_persona_name director)"
     for i in $(seq 0 $((WORKER_COUNT - 1))); do
-        echo "${WORKER_NAMES[@]:$i:1}: \"${SORTED_WORKER_PANES[@]:$i:1}\""
+        wname="${WORKER_NAMES[@]:$i:1}"
+        echo "${wname}: \"${SORTED_WORKER_PANES[@]:$i:1}\"  # $(get_persona_name "$wname")"
     done
 } > "$STUDIO_DIR/config/pane_targets.yaml"
 
@@ -268,10 +294,12 @@ if [ "$SETUP_ONLY" = false ]; then
 
     # Role instructions are injected via --append-system-prompt so they
     # persist through context compression (unlike user messages which get lost).
+    # MCP servers (universal-memory + qwen3-tts) are attached via --mcp-config.
+    MCP_CONFIG="$STUDIO_DIR/config/mcp_studio.json"
 
-    # Director — Opus with extended thinking + system prompt role
+    # Director — Opus with extended thinking + system prompt role + MCP
     DIRECTOR_PROMPT="$STUDIO_DIR/instructions/director.md"
-    tmux send-keys -t "$DIRECTOR_PANE" "claude --dangerously-skip-permissions --model opus --append-system-prompt \"\$(cat '$DIRECTOR_PROMPT')\""
+    tmux send-keys -t "$DIRECTOR_PANE" "claude --dangerously-skip-permissions --model opus --mcp-config '$MCP_CONFIG' --append-system-prompt \"\$(cat '$DIRECTOR_PROMPT')\""
     sleep 0.3
     tmux send-keys -t "$DIRECTOR_PANE" Enter
     log_info "  Director: opus + instructions/director.md (system prompt)"
@@ -280,7 +308,7 @@ if [ "$SETUP_ONLY" = false ]; then
     # Manager — always launched
     MANAGER_PROMPT="$STUDIO_DIR/instructions/manager.md"
     manager_pane="${SORTED_WORKER_PANES[@]:0:1}"
-    tmux send-keys -t "$manager_pane" "claude --dangerously-skip-permissions --model sonnet --append-system-prompt \"\$(cat '$MANAGER_PROMPT')\""
+    tmux send-keys -t "$manager_pane" "claude --dangerously-skip-permissions --model sonnet --mcp-config '$MCP_CONFIG' --append-system-prompt \"\$(cat '$MANAGER_PROMPT')\""
     sleep 0.3
     tmux send-keys -t "$manager_pane" Enter
     log_info "  Manager: sonnet + instructions/manager.md (system prompt)"
@@ -292,7 +320,7 @@ if [ "$SETUP_ONLY" = false ]; then
         if is_launch_role "$role"; then
             ROLE_PROMPT="$STUDIO_DIR/instructions/${role}.md"
             spec_pane="${SORTED_WORKER_PANES[@]:$pane_idx:1}"
-            tmux send-keys -t "$spec_pane" "claude --dangerously-skip-permissions --append-system-prompt \"\$(cat '$ROLE_PROMPT')\""
+            tmux send-keys -t "$spec_pane" "claude --dangerously-skip-permissions --mcp-config '$MCP_CONFIG' --append-system-prompt \"\$(cat '$ROLE_PROMPT')\""
             sleep 0.3
             tmux send-keys -t "$spec_pane" Enter
             log_info "  $role: sonnet + instructions/${role}.md (system prompt)"

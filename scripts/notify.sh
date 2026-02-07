@@ -1,11 +1,13 @@
 #!/bin/bash
 # Notify a tmux pane with a message. Handles the two-call send-keys protocol.
 #
-# Usage: scripts/notify.sh <pane_id> <message>
-# Example: scripts/notify.sh %60 "Task task_005 completed. Check queue/done/task_005.md"
+# Usage: scripts/notify.sh <role_name> <message>
+# Example: scripts/notify.sh manager "Task done"
+# Example: scripts/notify.sh gameplay_programmer "New task. Read queue/in-progress/task_001.md"
 #
-# Reads pane targets: scripts/notify.sh manager "Task done"
-#   Looks up "manager" in config/pane_targets.yaml automatically.
+# Role names are resolved to pane IDs via config/pane_targets.yaml.
+# Raw pane IDs (e.g., %60) are also accepted but discouraged — use role names.
+# Worker personas are stored in universal-memory (see config/studio.yaml for canonical list).
 
 set -euo pipefail
 
@@ -17,7 +19,7 @@ MESSAGE="$*"
 
 # If target is a role name (not a pane ID like %60), resolve it
 if [[ ! "$TARGET" =~ ^% ]]; then
-    PANE_ID=$(grep "^${TARGET}:" "$STUDIO_DIR/config/pane_targets.yaml" | head -1 | sed 's/.*"\(.*\)"/\1/')
+    PANE_ID=$(grep "^${TARGET}:" "$STUDIO_DIR/config/pane_targets.yaml" | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
     if [ -z "$PANE_ID" ]; then
         echo "ERROR: No pane found for role '$TARGET' in config/pane_targets.yaml" >&2
         exit 1

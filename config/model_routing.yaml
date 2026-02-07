@@ -1,0 +1,102 @@
+# Model Routing Configuration — AORCHESTRA Cost-Aware Selection
+# Reference: arXiv 2602.03786 (AORCHESTRA)
+#
+# Used by all specialists when delegating to sub-agents.
+# The worker (team leader) selects the model tier
+# based on task complexity and error tolerance.
+
+models:
+  opus:
+    cost_tier: "high"
+    strengths:
+      - "complex architectural reasoning"
+      - "unknown-cause debugging"
+      - "multi-file refactoring"
+      - "creative direction decisions"
+      - "tasks where errors cascade downstream"
+    use_when:
+      - "Task involves deep reasoning across a large system"
+      - "Debugging where the cause is unknown"
+      - "Task output directly affects game architecture"
+      - "Task requires integrating context from many sources"
+      - "Errors in this task would cause downstream failures"
+
+  sonnet:
+    cost_tier: "medium"
+    strengths:
+      - "code implementation from specs"
+      - "asset creation with AI tools"
+      - "design document writing"
+      - "test case development"
+      - "creative writing (dialogue, lore)"
+      - "integration work"
+    use_when:
+      - "Task has clear specifications"
+      - "Task is implementation-focused"
+      - "Task involves creative writing or design"
+      - "Task is structured analysis of existing code/data"
+      - "DEFAULT — use when unsure between tiers"
+
+  haiku:
+    cost_tier: "low"
+    strengths:
+      - "file reading and summarization"
+      - "running predefined test commands"
+      - "searching codebase for patterns"
+      - "formatting and conversion"
+      - "boilerplate generation from templates"
+      - "simple data extraction"
+    use_when:
+      - "Task is mechanical (read, search, format, run)"
+      - "Task has negligible reasoning requirement"
+      - "Task is data extraction or parsing"
+      - "A junior assistant could complete this correctly"
+
+# Task-type defaults — starting point for model selection
+task_type_defaults:
+  # Code tasks
+  code_implementation: "sonnet"
+  code_refactoring: "sonnet"
+  bug_diagnosis: "opus"
+  architecture_decision: "opus"
+  config_tuning: "sonnet"
+
+  # Asset tasks
+  asset_generation: "sonnet"
+  batch_asset_creation: "sonnet"
+  asset_post_processing: "sonnet"
+
+  # Testing tasks
+  run_test_suite: "haiku"
+  run_headless_check: "haiku"
+  analyze_test_failures: "sonnet"
+  write_test_cases: "sonnet"
+
+  # Research tasks
+  codebase_exploration: "haiku"
+  web_search: "haiku"
+  source_synthesis: "sonnet"
+  design_research: "sonnet"
+
+  # Review tasks (quality gates)
+  code_review: "sonnet"
+  asset_review: "sonnet"
+
+  # Writing tasks
+  dialogue_writing: "sonnet"
+  lore_writing: "sonnet"
+  ui_spec_writing: "sonnet"
+  balance_analysis: "sonnet"
+  debate_context_gathering: "haiku"
+
+  # Mechanical tasks
+  file_reading: "haiku"
+  file_formatting: "haiku"
+  log_parsing: "haiku"
+  screenshot_capture: "haiku"
+
+# Sub-agent type constraints
+subagent_defaults:
+  bash_subagent_default: "haiku"       # Bash tasks are typically mechanical
+  explore_subagent_default: "haiku"    # Search tasks with haiku usually sufficient
+  general_purpose_default: "sonnet"    # Complex tasks, sonnet as baseline
